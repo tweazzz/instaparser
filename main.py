@@ -1,6 +1,7 @@
 import instaloader
 import os
 import re
+import requests
 
 def clean_username(username):
     return re.sub(r'[^\w]', '', username)
@@ -8,8 +9,9 @@ def clean_username(username):
 def download_user_posts(target_username, max_posts=5):
     L = instaloader.Instaloader()
 
+    # Подставьте сюда свои учетные данные
     your_username = 'gggg_gkkkkllll'
-    your_password = 'gambitcsgo777'
+    your_password = '777kaz777'
 
     L.context.login(your_username, your_password)
 
@@ -20,19 +22,59 @@ def download_user_posts(target_username, max_posts=5):
     user_directory = f'{clean_username_str}_posts'
     os.makedirs(user_directory, exist_ok=True)
 
-    for index, post in zip(range(max_posts), profile.get_posts()):
-        post_directory = os.path.join(user_directory, f'post_{index + 1}')
+    posts = profile.get_posts()
+    posts_downloaded = 0
+
+    for post in posts:
+        if posts_downloaded >= max_posts:
+            break
+
+        if not hasattr(post, 'location') or post.location is not None:
+            continue
+
+        post_directory = os.path.join(user_directory, f'post_{post.date_utc.strftime("%Y%m%d_%H%M%S")}')
         os.makedirs(post_directory, exist_ok=True)
 
-        # Скачиваем изображения
-        for i, image in enumerate(post.get_sidecar_nodes()):
-            image_filename = os.path.join(post_directory, f'image_{i + 1}.jpg')
+        try:
+            download_post(post, post_directory)
+        except requests.exceptions.RequestException as e:
+            print(f"Ошибка при запросе к Instagram API: {e}")
+            continue
+        except Exception as e:
+            print(f"Ошибка при скачивании поста: {e}")
+            continue
+
+        posts_downloaded += 1
+
+    print(f"Загружено {posts_downloaded} постов.")
+
+def download_post(post, post_directory):
+    if post.is_video:
+        video_url = post.url
+        video_filename = os.path.join(post_directory, 'video.mp4')
+        try:
+            response = requests.get(video_url)
+            response.raise_for_status()
+            with open(video_filename, 'wb') as video_file:
+                video_file.write(response.content)
+        except Exception as e:
+            print(f"Ошибка при скачивании видео: {e}")
+    else:
+        try:
+            image_url = post.url
+            image_filename = os.path.join(post_directory, f'image_1.jpg')
+            response = requests.get(image_url)
+            response.raise_for_status()
             with open(image_filename, 'wb') as img_file:
-                img_file.write(image.get_resources()[0].content)
+                img_file.write(response.content)
+        except Exception as e:
+            print(f"Ошибка при скачивании изображения: {e}")
 
-        if post.is_video:
-            video_url = post.video_url
-            video_filename = os.path.join(post_directory, 'video.mp4')
-            L.download_videos(video_url, target=video_filename)
+    caption_text = post.caption if post.caption is not None else ''
+    caption_filename = os.path.join(post_directory, 'caption.txt')
+    with open(caption_filename, 'w', encoding='utf-8') as caption_file:
+        caption_file.write(caption_text)
 
-download_user_posts('cristiano', max_posts=2)
+    print(f"Пост успешно скачан.")
+
+download_user_posts('ksm_malika', max_posts=5)
