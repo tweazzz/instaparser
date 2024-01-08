@@ -44,9 +44,12 @@ def download_posts_data(instagram_data_path, posts_per_account, pickle_directory
 
                 if post.is_video:
                     video_url = post.video_url
+                    # Получение URL обложки видео через post.url
+                    video_thumbnail_url = f"{post.url.rstrip('/')}/photo"
                     video_data = {
                         'url': video_url,
-                        'is_video': True
+                        'is_video': True,
+                        'thumbnail_url': video_thumbnail_url
                     }
                     post_data['media'].append(video_data)
 
